@@ -1,0 +1,51 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER:     agridl
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB:       agridl_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agridl"]
+      interval: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  api:
+    build: .
+    env_file: .env
+    ports:
+      - "3001:3001"
+      - "9090:9090"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_started }
+    command: ["npm", "run", "dev"]
+    volumes:
+      - ./src:/app/src
+      - ./keys:/app/keys:ro
+
+  worker:
+    build: .
+    env_file: .env
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_started }
+    command: ["npm", "run", "worker:start"]
+
+volumes:
+  pg_data:
+  redis_data:

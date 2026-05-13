@@ -1,0 +1,225 @@
+// prisma/schema.prisma — Agri-D-Ledger data model
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ──────────────────────────────────────────────────────────────
+
+enum Role {
+  FARMER
+  BUYER
+  COOP_ADMIN
+  REGULATOR
+  SUPER_ADMIN
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  DISPUTED
+}
+
+enum ProduceStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  TOKEN_REFRESH
+  MFA_CHALLENGE
+  MFA_VERIFIED
+  MFA_FAILED
+  ACCESS_DENIED
+  PASSWORD_CHANGE
+  PRODUCE_CREATED
+  TRANSACTION_CREATED
+  TRANSACTION_CONFIRMED
+  LEDGER_WRITE
+  ZKP_VERIFIED
+}
+
+// ── Users ──────────────────────────────────────────────────────────────
+
+model User {
+  id              String    @id @default(uuid())
+  phone           String    @unique
+  email           String?   @unique
+  passwordHash    String?
+  role            Role      @default(FARMER)
+  nationalIdHash  String?   // H(national_id) — stored hashed only
+  cooperativeId   String?
+  totpSecret      String?   // encrypted TOTP secret
+  mfaEnabled      Boolean   @default(false)
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  cooperative     Cooperative?  @relation(fields: [cooperativeId], references: [id])
+  produce         Produce[]
+  buyerTxs        Transaction[] @relation("buyer")
+  farmerTxs       Transaction[] @relation("farmer")
+  auditEvents     AuditEvent[]
+  zkpProofs       ZkpProof[]
+
+  @@index([phone])
+  @@index([cooperativeId])
+  @@map("users")
+}
+
+// ── Cooperatives ────────────────────────────────────────────────────────
+
+model Cooperative {
+  id          String    @id @default(uuid())
+  name        String
+  county      String
+  merkleRoot  String?   // Merkle root of member national-ID hashes
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  members     User[]
+  produce     Produce[]
+
+  @@map("cooperatives")
+}
+
+// ── Produce ──────────────────────────────────────────────────────────────
+
+model Produce {
+  id            String        @id @default(uuid())
+  farmerId      String
+  cooperativeId String?
+  crop          String        // e.g. "maize", "coffee", "tea"
+  gradeCode     String        // KEBS grade: e.g. "AA", "AB", "PB"
+  weightKg      Float
+  pricePerKg    Float?        // null until buyer sets offer
+  harvestDate   DateTime
+  county        String
+  status        ProduceStatus @default(AVAILABLE)
+  iotSensorId   String?       // linked IoT device
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  farmer        User          @relation(fields: [farmerId], references: [id])
+  cooperative   Cooperative?  @relation(fields: [cooperativeId], references: [id])
+  transactions  Transaction[]
+
+  @@index([farmerId])
+  @@index([status])
+  @@index([county, crop])
+  @@map("produce")
+}
+
+// ── Transactions ─────────────────────────────────────────────────────────
+
+model Transaction {
+  id              String            @id @default(uuid())
+  farmerId        String
+  buyerId         String
+  produceId       String
+  weightKg        Float
+  pricePerKg      Float
+  totalAmount     Float             // weightKg * pricePerKg in KES
+  status          TransactionStatus @default(PENDING)
+  onChainHash     String?           // Polygon tx hash
+  blockNumber     BigInt?
+  zkpProofId      String?           // linked ZKP proof
+  createdAt       DateTime          @default(now())
+  confirmedAt     DateTime?
+  updatedAt       DateTime          @updatedAt
+
+  farmer          User              @relation("farmer", fields: [farmerId], references: [id])
+  buyer           User              @relation("buyer", fields: [buyerId], references: [id])
+  produce         Produce           @relation(fields: [produceId], references: [id])
+  zkpProof        ZkpProof?         @relation(fields: [zkpProofId], references: [id])
+  ledgerEntry     LedgerEntry?
+
+  @@index([farmerId])
+  @@index([buyerId])
+  @@index([status])
+  @@map("transactions")
+}
+
+// ── Ledger entries ───────────────────────────────────────────────────────
+
+model LedgerEntry {
+  id              String    @id @default(uuid())
+  transactionId   String    @unique
+  dataHash        String    // keccak256 of transaction payload
+  onChainHash     String    // Polygon tx hash
+  blockNumber     BigInt
+  contractAddress String
+  anchoredAt      DateTime  @default(now())
+
+  transaction     Transaction @relation(fields: [transactionId], references: [id])
+
+  @@map("ledger_entries")
+}
+
+// ── ZKP Proofs ───────────────────────────────────────────────────────────
+
+model ZkpProof {
+  id            String    @id @default(uuid())
+  userId        String
+  proofType     String    // "FARMER_MEMBERSHIP" | "TX_RANGE"
+  publicInputs  Json      // snarkjs public signals
+  proofData     Json      // { pi_a, pi_b, pi_c }
+  verified      Boolean   @default(false)
+  onChainTxHash String?
+  createdAt     DateTime  @default(now())
+
+  user          User          @relation(fields: [userId], references: [id])
+  transactions  Transaction[]
+
+  @@index([userId, proofType])
+  @@map("zkp_proofs")
+}
+
+// ── Audit log ──────────────────────────────────────────────────────────
+// INSERT-ONLY — no UPDATE or DELETE permissions granted on this table
+
+model AuditEvent {
+  id        BigInt      @id @default(autoincrement())
+  userId    String?
+  action    AuditAction
+  ip        String
+  userAgent String?
+  path      String?
+  status    Int?
+  meta      Json?       // additional context
+  createdAt DateTime    @default(now())
+
+  user      User?       @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
+  @@map("audit_events")
+}
+
+// ── IoT Sensor readings ─────────────────────────────────────────────────
+
+model SensorReading {
+  id          String    @id @default(uuid())
+  sensorId    String
+  farmerId    String?
+  temperature Float?
+  humidity    Float?
+  soilPh      Float?
+  rainfall    Float?
+  recordedAt  DateTime  @default(now())
+
+  @@index([sensorId])
+  @@index([recordedAt])
+  @@map("sensor_readings")
+}
