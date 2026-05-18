@@ -1,0 +1,133 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  FARMER
+  BUYER
+  COOP_ADMIN
+  REGULATOR
+  SUPER_ADMIN
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  DISPUTED
+}
+
+enum ProduceStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+}
+
+model User {
+  id            String    @id @default(uuid())
+  phone         String    @unique
+  email         String?   @unique
+  passwordHash  String?
+  role          Role      @default(FARMER)
+  mfaEnabled    Boolean   @default(false)
+  mfaSecret     String?
+  cooperativeId String?
+  nationalId    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  produce       Produce[]
+  buyTransactions Transaction[] @relation("buyer")
+  farmTransactions Transaction[] @relation("farmer")
+  refreshTokens RefreshToken[]
+  cooperative   Cooperative?  @relation(fields: [cooperativeId], references: [id])
+
+  @@index([phone])
+  @@index([role])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Cooperative {
+  id        String   @id @default(uuid())
+  name      String
+  region    String
+  createdAt DateTime @default(now())
+  members   User[]
+}
+
+model Produce {
+  id           String        @id @default(uuid())
+  farmerId     String
+  crop         String
+  gradeCode    String
+  weightKg     Decimal       @db.Decimal(10, 2)
+  pricePerKg   Decimal?      @db.Decimal(10, 2)
+  harvestDate  DateTime
+  county       String
+  status       ProduceStatus @default(AVAILABLE)
+  iotSensorId  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  farmer       User          @relation(fields: [farmerId], references: [id])
+  transactions Transaction[]
+
+  @@index([farmerId])
+  @@index([crop, status])
+  @@index([county])
+}
+
+model Transaction {
+  id            String            @id @default(uuid())
+  farmerId      String
+  buyerId       String
+  produceId     String
+  weightKg      Decimal           @db.Decimal(10, 2)
+  pricePerKg    Decimal           @db.Decimal(10, 2)
+  totalAmount   Decimal           @db.Decimal(14, 2)
+  status        TransactionStatus @default(PENDING)
+  onChainHash   String?
+  blockNumber   String?
+  createdAt     DateTime          @default(now())
+  confirmedAt   DateTime?
+
+  farmer        User              @relation("farmer", fields: [farmerId], references: [id])
+  buyer         User              @relation("buyer", fields: [buyerId], references: [id])
+  produce       Produce           @relation(fields: [produceId], references: [id])
+  ledgerEntries LedgerEntry[]
+
+  @@index([farmerId])
+  @@index([buyerId])
+  @@index([status])
+}
+
+model LedgerEntry {
+  id              String      @id @default(uuid())
+  transactionId   String
+  dataHash        String
+  onChainHash     String
+  blockNumber     String
+  contractAddress String
+  anchoredAt      DateTime    @default(now())
+
+  transaction     Transaction @relation(fields: [transactionId], references: [id])
+
+  @@index([transactionId])
+  @@index([onChainHash])
+}

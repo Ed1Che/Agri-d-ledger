@@ -1,0 +1,22 @@
+{
+  "name": "@agridl/ussd",
+  "version": "1.0.0",
+  "description": "USSD interface for farmers via Africa's Talking",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "@agridl/shared-types": "*",
+    "@supabase/supabase-js": "^2.105.4",
+    "body-parser": "^2.2.2",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  },
+  "license": "ISC",
+  "type": "commonjs"
+}

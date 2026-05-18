@@ -1,0 +1,36 @@
+{
+  "name": "agri-d-ledger",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agri-D-Ledger monorepo — blockchain-backed agricultural supply chain ledger with USSD interface",
+  "packageManager": "npm@9.2.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --filter=!.",
+    "build": "turbo run build --filter=!.",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "keys:generate": "npm run keys:generate --workspace=apps/api",
+    "db:migrate": "npm run prisma:migrate --workspace=apps/api",
+    "db:seed": "npm run prisma:seed --workspace=apps/api",
+    "db:studio": "npm run prisma:studio --workspace=apps/api"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "crypto-js": "^4.2.0",
+    "fs-extra": "^11.3.5",
+    "tailwindcss": "^4.3.0"
+  }
+}
