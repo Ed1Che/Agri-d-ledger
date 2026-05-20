@@ -12,7 +12,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "paths": {
-      "@agridl/shared-types": ["../shared-types/src/index.ts"]
+      "@agridl/shared-types": ["./shared-types/src/index.ts"]
     }
   },
   "include": ["src/**/*"],

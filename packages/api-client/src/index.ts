@@ -37,11 +37,12 @@ export class AgridlApiClient {
   private accessToken: string | null = null;
 
   constructor(baseUrl?: string) {
+    const env = (globalThis as any).process?.env;
     this.baseUrl =
       baseUrl ??
       (typeof window !== 'undefined'
-        ? (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001')
-        : (process.env.API_URL ?? 'http://localhost:3001'));
+        ? (env?.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001')
+        : (env?.API_URL ?? 'http://localhost:3001'));
   }
 
   setAccessToken(token: string | null) {
@@ -215,5 +216,3 @@ export class AgridlApiClient {
 }
 
 export const apiClient = new AgridlApiClient();
-
-export type { ApiClientError };
