@@ -1,46 +1,35 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { expect } from "chai";
+import { ethers } from "hardhat";
 
-import { network } from "hardhat";
+describe("Counter", function () {
+  it("Should emit the Increment event when calling inc()", async function () {
+    const Counter = await ethers.getContractFactory("Counter");
+    const counter = await Counter.deploy();
+    await counter.waitForDeployment();
 
-describe("Counter", async function () {
-  const { viem } = await network.create();
-  const publicClient = await viem.getPublicClient();
-
-  it("Should emit the Increment event when calling the inc() function", async function () {
-    const counter = await viem.deployContract("Counter");
-
-    await viem.assertions.emitWithArgs(
-      counter.write.inc(),
-      counter,
-      "Increment",
-      [1n],
-    );
+    await expect(counter.inc())
+      .to.emit(counter, "Increment")
+      .withArgs(1n);
   });
 
-  it("The sum of the Increment events should match the current value", async function () {
-    const counter = await viem.deployContract("Counter");
-    const deploymentBlockNumber = await publicClient.getBlockNumber();
+  it("The sum of Increment events should match current value", async function () {
+    const Counter = await ethers.getContractFactory("Counter");
+    const counter = await Counter.deploy();
+    await counter.waitForDeployment();
 
-    // run a series of increments
     for (let i = 1n; i <= 10n; i++) {
-      await counter.write.incBy([i]);
+      await counter.incBy(i);
     }
 
-    const events = await publicClient.getContractEvents({
-      address: counter.address,
-      abi: counter.abi,
-      eventName: "Increment",
-      fromBlock: deploymentBlockNumber,
-      strict: true,
-    });
+    const events = await counter.queryFilter(
+      counter.filters.Increment()
+    );
 
-    // check that the aggregated events match the current value
     let total = 0n;
     for (const event of events) {
       total += event.args.by;
     }
 
-    assert.equal(total, await counter.read.x());
+    expect(total).to.equal(await counter.x());
   });
 });
