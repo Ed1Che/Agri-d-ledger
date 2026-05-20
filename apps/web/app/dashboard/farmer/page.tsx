@@ -1,6 +1,6 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -102,11 +102,15 @@ export default function FarmerDashboard() {
 
       // Get farmer profile
       const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const { data: farmerData } = await supabase
         .from('farmers')
         .select('id')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .single()
+
+      if (!farmerData) throw new Error('Farmer profile not found')
 
       await supabase
         .from('farmer_produce')

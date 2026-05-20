@@ -1,5 +1,4 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -75,8 +74,9 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: 'Geist', 'Geist Fallback', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
+  
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -96,15 +96,18 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -113,6 +116,47 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Agri-D-Ledger custom brand palette mapping */
+  --color-agri-green-50: #f0fdf4;
+  --color-agri-green-100: #dcfce7;
+  --color-agri-green-200: #bbf7d0;
+  --color-agri-green-300: #86efac;
+  --color-agri-green-400: #4ade80;
+  --color-agri-green-500: #22c55e;
+  --color-agri-green-600: #16a34a;
+  --color-agri-green-700: #15803d;
+  --color-agri-green-800: #166534;
+  --color-agri-green-900: #14532d;
+
+  --color-agri-earth-50: #fdf8f0;
+  --color-agri-earth-100: #faefd8;
+  --color-agri-earth-200: #f3d9a8;
+  --color-agri-earth-300: #eabb6e;
+  --color-agri-earth-400: #e09b3d;
+  --color-agri-earth-500: #d97706;
+  --color-agri-earth-600: #b45309;
+  --color-agri-earth-700: #92400e;
+  --color-agri-earth-800: #78350f;
+  --color-agri-earth-900: #451a03;
+
+  /* Keyframes & Animations */
+  @keyframes accordion-down {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.3s ease-out;
 }
 
 @layer base {
