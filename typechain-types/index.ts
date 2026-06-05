@@ -14,7 +14,15 @@ export type { ERC165 } from "./@openzeppelin/contracts/utils/introspection/ERC16
 export { ERC165__factory } from "./factories/@openzeppelin/contracts/utils/introspection/ERC165__factory";
 export type { IERC165 } from "./@openzeppelin/contracts/utils/introspection/IERC165";
 export { IERC165__factory } from "./factories/@openzeppelin/contracts/utils/introspection/IERC165__factory";
+export type { ChainOfCustody } from "./contracts/ChainOfCustody";
+export { ChainOfCustody__factory } from "./factories/contracts/ChainOfCustody__factory";
 export type { Counter } from "./contracts/Counter";
 export { Counter__factory } from "./factories/contracts/Counter__factory";
 export type { IdentityRegistry } from "./contracts/IdentityRegistry";
 export { IdentityRegistry__factory } from "./factories/contracts/IdentityRegistry__factory";
+export type { PaymentEscrow } from "./contracts/PaymentEscrow";
+export { PaymentEscrow__factory } from "./factories/contracts/PaymentEscrow__factory";
+export type { ProductRegistry } from "./contracts/ProductRegistry";
+export { ProductRegistry__factory } from "./factories/contracts/ProductRegistry__factory";
+export type { QualityVerification } from "./contracts/QualityVerification";
+export { QualityVerification__factory } from "./factories/contracts/QualityVerification__factory";

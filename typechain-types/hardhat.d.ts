@@ -30,6 +30,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IERC165__factory>;
     getContractFactory(
+      name: "ChainOfCustody",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.ChainOfCustody__factory>;
+    getContractFactory(
       name: "Counter",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.Counter__factory>;
@@ -37,6 +41,18 @@ declare module "hardhat/types/runtime" {
       name: "IdentityRegistry",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IdentityRegistry__factory>;
+    getContractFactory(
+      name: "PaymentEscrow",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.PaymentEscrow__factory>;
+    getContractFactory(
+      name: "ProductRegistry",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.ProductRegistry__factory>;
+    getContractFactory(
+      name: "QualityVerification",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.QualityVerification__factory>;
 
     getContractAt(
       name: "AccessControl",
@@ -59,6 +75,11 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.IERC165>;
     getContractAt(
+      name: "ChainOfCustody",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.ChainOfCustody>;
+    getContractAt(
       name: "Counter",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -68,6 +89,21 @@ declare module "hardhat/types/runtime" {
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.IdentityRegistry>;
+    getContractAt(
+      name: "PaymentEscrow",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.PaymentEscrow>;
+    getContractAt(
+      name: "ProductRegistry",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.ProductRegistry>;
+    getContractAt(
+      name: "QualityVerification",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.QualityVerification>;
 
     deployContract(
       name: "AccessControl",
@@ -86,6 +122,10 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IERC165>;
     deployContract(
+      name: "ChainOfCustody",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ChainOfCustody>;
+    deployContract(
       name: "Counter",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.Counter>;
@@ -93,6 +133,18 @@ declare module "hardhat/types/runtime" {
       name: "IdentityRegistry",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IdentityRegistry>;
+    deployContract(
+      name: "PaymentEscrow",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.PaymentEscrow>;
+    deployContract(
+      name: "ProductRegistry",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ProductRegistry>;
+    deployContract(
+      name: "QualityVerification",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.QualityVerification>;
 
     deployContract(
       name: "AccessControl",
@@ -115,6 +167,11 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IERC165>;
     deployContract(
+      name: "ChainOfCustody",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ChainOfCustody>;
+    deployContract(
       name: "Counter",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -124,6 +181,21 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IdentityRegistry>;
+    deployContract(
+      name: "PaymentEscrow",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.PaymentEscrow>;
+    deployContract(
+      name: "ProductRegistry",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.ProductRegistry>;
+    deployContract(
+      name: "QualityVerification",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.QualityVerification>;
 
     // default types
     getContractFactory(
