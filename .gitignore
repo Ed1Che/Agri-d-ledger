@@ -1,0 +1,21 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Environments
+venv/
+.venv/
+
+# Large datasets (IMPORTANT)
+data/maize_images/
+
+# Outputs (generated files)
+outputs/
+
+# Model artifacts (optional but recommended)
+*.keras
+*.pkl
+*.npy
+
+# Logs
+*.log
