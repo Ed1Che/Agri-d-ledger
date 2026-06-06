@@ -1,6 +1,6 @@
 'use client'
 
-import { createClient } from '@/lib/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { useEffect, useState } from 'react'

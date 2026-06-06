@@ -20,6 +20,9 @@
     "type-check": {
       "dependsOn": ["^build"],
       "outputs": []
+    },
+    "compile": {
+      "outputs": ["artifacts/**", "typechain-types/**"]
     }
   }
 }

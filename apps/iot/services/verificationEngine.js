@@ -86,6 +86,31 @@ const verifyPotatoes = (readings) => {
   }
 }
 
+const verifyGeneric = (readings) => {
+  const issues = []
+  let riskLevel = 'LOW'
+
+  if (readings.temperature > 35 || readings.temperature < 5) {
+    issues.push(`Extreme temperature: ${readings.temperature}°C`)
+    riskLevel = 'HIGH'
+  } else if (readings.temperature > 30 || readings.temperature < 10) {
+    issues.push(`Elevated temperature: ${readings.temperature}°C`)
+    riskLevel = 'MEDIUM'
+  }
+
+  if (readings.humidity > 90) {
+    issues.push(`High humidity: ${readings.humidity}%`)
+    riskLevel = riskLevel === 'HIGH' ? 'HIGH' : 'MEDIUM'
+  }
+
+  return {
+    riskLevel,
+    issues,
+    passed: riskLevel === 'LOW',
+    thresholds: { temperature: '10°C - 30°C SAFE', humidity: '< 90% SAFE' }
+  }
+}
+
 const runVerification = (readings) => {
   const crop = readings.cropType.toLowerCase()
 
@@ -94,7 +119,7 @@ const runVerification = (readings) => {
   } else if (crop === 'potatoes') {
     return verifyPotatoes(readings)
   } else {
-    throw new Error(`No verification rules for crop: ${readings.cropType}`)
+    return verifyGeneric(readings)
   }
 }
 

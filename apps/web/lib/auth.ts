@@ -2,7 +2,7 @@
 // Server-side auth helpers used by Server Components (e.g. dashboard/page.tsx).
 // These run on the server; never import client-side Supabase here.
 
-import { createClient } from '@/lib/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 /**
  * Returns the currently authenticated Supabase user, or null if not logged in.

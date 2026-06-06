@@ -5,7 +5,7 @@ const iotRoutes = require('./routes/iotRoutes')
 const { checkAndVerifyListings } = require('./controllers/iotController')
 
 const app = express()
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 3003
 
 // Middleware
 app.use(express.json())

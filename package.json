@@ -5,7 +5,11 @@
   "description": "Agri-D-Ledger monorepo — blockchain-backed agricultural supply chain ledger with USSD interface",
   "packageManager": "npm@9.2.0",
   "workspaces": [
-    "apps/*",
+    "apps/web",
+    "apps/api",
+    "apps/ussd",
+    "apps/iot",
+    "apps/blockchain",
     "packages/*"
   ],
   "scripts": {

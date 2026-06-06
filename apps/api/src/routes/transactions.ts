@@ -2,12 +2,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { randomUUID, createHash } from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { logger } from '../utils/logger';
 
 export const transactionsRouter = Router();
-const prisma = new PrismaClient();
 
 const createTxSchema = z.object({
   farmerId: z.string().uuid(),

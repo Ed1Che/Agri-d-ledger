@@ -2,11 +2,10 @@
 import { Router } from 'express';
 import { createHash } from 'crypto';
 import { randomUUID } from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole } from '../middleware/auth';
 
 export const ledgerRouter = Router();
-const prisma = new PrismaClient();
 
 // GET /api/v1/ledger
 ledgerRouter.get('/', requireAuth, async (req, res, next) => {
@@ -31,11 +30,17 @@ ledgerRouter.get('/:transactionId/verify', requireAuth, async (req, res, next) =
     });
     if (!entry) return res.status(404).json({ error: 'not_found', message: 'No ledger entry for this transaction' });
 
-    // Recompute hash and compare
-    const recomputed = createHash('sha256')
-      .update(JSON.stringify({ transactionId: entry.transactionId }))
-      .digest('hex');
-    const verified = recomputed === entry.dataHash;
+    // Recompute hash over the full transaction payload (matches hash stored at write time)
+    const tx = entry.transaction;
+    const payload = {
+      transactionId: tx.id,
+      weightKg: tx.weightKg.toString(),
+      pricePerKg: tx.pricePerKg.toString(),
+      timestamp: tx.createdAt.toISOString(),
+    };
+    const recomputed = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+    const storedHash = entry.dataHash.replace(/^sha256-/, '');
+    const verified = recomputed === storedHash;
 
     return res.json({ data: { verified, onChainHash: entry.onChainHash, blockNumber: entry.blockNumber } });
   } catch (err) { next(err); }

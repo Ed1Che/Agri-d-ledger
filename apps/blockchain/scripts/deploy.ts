@@ -16,6 +16,7 @@ async function main() {
   console.log("Counter deployed to:", await counter.getAddress());
   
    // 2. Deploy ProductRegistry — pass IdentityRegistry address
+  const registryAddress = await registry.getAddress();
   const Product = await ethers.getContractFactory("ProductRegistry");
   const productRegistry = await Product.deploy(registryAddress);
   await productRegistry.waitForDeployment();

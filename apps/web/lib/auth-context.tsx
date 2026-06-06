@@ -4,7 +4,7 @@
 // Place <AuthProvider> inside the root layout body.
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { createClient } from '@/lib/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { setApiToken, restoreApiToken } from '@/lib/api'
 import type { User } from '@supabase/supabase-js'
 

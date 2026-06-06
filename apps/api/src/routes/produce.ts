@@ -2,11 +2,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole } from '../middleware/auth';
 
 export const produceRouter = Router();
-const prisma = new PrismaClient();
 
 const createProduceSchema = z.object({
   crop: z.string().min(1),

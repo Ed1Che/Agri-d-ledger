@@ -8,12 +8,11 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { SignJWT, importPKCS8 } from 'jose';
 import { randomUUID } from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { requireAuth } from '../middleware/auth';
 import { logger } from '../utils/logger';
 
 export const authRouter = Router();
-const prisma = new PrismaClient();
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
