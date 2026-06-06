@@ -15,6 +15,7 @@ import { ussdRouter } from './routes/ussd';
 import { usersRouter } from './routes/users';
 import { errorHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
+import { startBlockchainAnchor } from './jobs/blockchainAnchor';
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
@@ -59,6 +60,7 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
   logger.info(`Agri-D-Ledger API running on port ${PORT} [${process.env.NODE_ENV}]`);
+  if (process.env.BLOCKCHAIN_RPC_URL) startBlockchainAnchor();
 });
 
 export default app;

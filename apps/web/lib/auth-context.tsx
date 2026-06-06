@@ -39,12 +39,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null)
       setRole(session?.user?.user_metadata?.user_type ?? null)
 
-      // Sync the Supabase JWT to the Express API client so authenticated
-      // requests work immediately after login.
-      // NOTE: For production, exchange the Supabase JWT for an Express JWT
-      //       via POST /api/v1/auth/login (or a dedicated SSO endpoint) and
-      //       call setApiToken() with the returned accessToken instead.
-      setApiToken(session?.access_token ?? null)
+      if (session?.access_token) {
+        // Exchange Supabase JWT for a signed Express RS256 JWT so all API
+        // calls use the correct auth system.
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/supabase-exchange`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ supabaseAccessToken: session.access_token }),
+        })
+          .then((r) => r.json())
+          .then(({ data }) => setApiToken(data?.accessToken ?? null))
+          .catch(() => setApiToken(session.access_token))
+      } else {
+        setApiToken(null)
+      }
       setLoading(false)
     })
 

@@ -31,6 +31,96 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: agridl-api
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/agridl
+      - REDIS_URL=redis://redis:6379
+    env_file:
+      - apps/api/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: agridl-web
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://api:3001
+    env_file:
+      - apps/web/.env.local
+    depends_on:
+      api:
+        condition: service_healthy
+
+  ussd:
+    build:
+      context: .
+      dockerfile: apps/ussd/Dockerfile
+    container_name: agridl-ussd
+    restart: unless-stopped
+    ports:
+      - '3002:3002'
+    environment:
+      - NODE_ENV=production
+      - INTERNAL_API_URL=http://api:3001
+    env_file:
+      - apps/ussd/.env
+    depends_on:
+      api:
+        condition: service_healthy
+
+  iot:
+    build:
+      context: .
+      dockerfile: apps/iot/Dockerfile
+    container_name: agridl-iot
+    restart: unless-stopped
+    ports:
+      - '3003:3003'
+    environment:
+      - NODE_ENV=production
+      - INTERNAL_API_URL=http://api:3001
+    env_file:
+      - apps/iot/.env
+    depends_on:
+      api:
+        condition: service_healthy
+
+  ml:
+    build:
+      context: .
+      dockerfile: apps/ml/Dockerfile
+    container_name: agridl-ml
+    restart: unless-stopped
+    ports:
+      - '8000:8000'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:8000/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
 volumes:
   agridl_postgres_data:
   agridl_redis_data:

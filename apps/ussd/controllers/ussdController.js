@@ -28,7 +28,7 @@ const handleUssd = async (req, res) => {
   try {
     // ── Main menu ──────────────────────────────────────────────────────
     if (text === '') {
-      response = `CON Welcome to Agri-D Ledger\n1. List Produce\n2. Check My Listings\n3. View Prices\n4. Register`
+      response = `CON Welcome to Agri-D Ledger\n1. List Produce\n2. Check My Listings\n3. View Prices\n4. Register\n5. My Bids`
 
     // ─────────────────────────────────────────────────────────────────
     // Option 1: List Produce
@@ -197,6 +197,101 @@ const handleUssd = async (req, res) => {
           response = `END Registration failed. Please try again.`
         } else {
           response = `END Registration successful!\nName: ${name}\nLocation: ${location}\n\nWelcome to Agri-D Ledger!`
+        }
+      }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Option 5: My Bids
+    // ─────────────────────────────────────────────────────────────────
+
+    } else if (text === '5') {
+      const { data: farmer } = await supabase
+        .from('farmers')
+        .select('id')
+        .eq('phone_number', phoneNumber)
+        .single()
+
+      if (!farmer) {
+        response = `END No farmer profile found.\nDial back and choose 4 to register.`
+      } else {
+        const { data: bids } = await supabase
+          .from('bid_confirmations')
+          .select('id, status, bids(buyer_price_per_unit, regional_bids(region))')
+          .eq('farmer_id', farmer.id)
+          .eq('status', 'pending')
+          .limit(3)
+
+        if (!bids || bids.length === 0) {
+          response = `END No pending bids for your produce.`
+        } else {
+          const list = bids.map((b, i) => {
+            const region = b.bids?.regional_bids?.region ?? 'Unknown'
+            const price = b.bids?.buyer_price_per_unit ?? 0
+            return `${i + 1}. ${region} KES ${price}/unit`
+          }).join('\n')
+          response = `CON Pending bids:\n${list}\n\nEnter number to confirm (0=skip):`
+        }
+      }
+
+    } else if (textArray.length === 2 && textArray[0] === '5') {
+      if (userInput === '0') {
+        response = `END No action taken.`
+      } else if (!isValidNumber(userInput) || Number(userInput) > 3) {
+        response = `CON Invalid selection. Enter 1-3 or 0 to skip:`
+      } else {
+        const { data: farmer } = await supabase
+          .from('farmers')
+          .select('id')
+          .eq('phone_number', phoneNumber)
+          .single()
+
+        const { data: bids } = await supabase
+          .from('bid_confirmations')
+          .select('id, bids(buyer_price_per_unit, regional_bids(region))')
+          .eq('farmer_id', farmer.id)
+          .eq('status', 'pending')
+          .limit(3)
+
+        const chosen = bids?.[Number(userInput) - 1]
+        if (!chosen) {
+          response = `END Bid not found. Please try again.`
+        } else {
+          const region = chosen.bids?.regional_bids?.region ?? 'Unknown'
+          const price = chosen.bids?.buyer_price_per_unit ?? 0
+          response = `CON Confirm bid from ${region}\nKES ${price}/unit?\n1. Accept\n2. Reject`
+        }
+      }
+
+    } else if (textArray.length === 3 && textArray[0] === '5') {
+      if (!isValidMenuChoice(userInput, ['1', '2'])) {
+        response = `CON Invalid choice.\n1. Accept\n2. Reject`
+      } else {
+        const { data: farmer } = await supabase
+          .from('farmers')
+          .select('id')
+          .eq('phone_number', phoneNumber)
+          .single()
+
+        const { data: bids } = await supabase
+          .from('bid_confirmations')
+          .select('id')
+          .eq('farmer_id', farmer.id)
+          .eq('status', 'pending')
+          .limit(3)
+
+        const chosen = bids?.[Number(textArray[1]) - 1]
+        if (!chosen) {
+          response = `END Session expired. Please try again.`
+        } else {
+          const newStatus = userInput === '1' ? 'accepted' : 'rejected'
+          const { error } = await supabase
+            .from('bid_confirmations')
+            .update({ status: newStatus, responded_at: new Date().toISOString() })
+            .eq('id', chosen.id)
+
+          response = error
+            ? `END Error updating bid. Try again.`
+            : `END Bid ${newStatus}. You will receive an SMS confirmation shortly.`
         }
       }
 

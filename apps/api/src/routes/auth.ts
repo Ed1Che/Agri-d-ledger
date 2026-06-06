@@ -8,6 +8,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { SignJWT, importPKCS8 } from 'jose';
 import { randomUUID } from 'crypto';
+import { createClient } from '@supabase/supabase-js';
 import { prisma } from '../lib/prisma';
 import { requireAuth } from '../middleware/auth';
 import { logger } from '../utils/logger';
@@ -129,8 +130,42 @@ authRouter.post('/refresh', async (req, res, next) => {
 // ── POST /api/v1/auth/logout ──────────────────────────────────────────────────
 authRouter.post('/logout', requireAuth, async (req, res, next) => {
   try {
-    // Revoke all refresh tokens for this user
     await prisma.refreshToken.deleteMany({ where: { userId: req.user!.sub } });
     return res.json({ data: { ok: true } });
+  } catch (err) { next(err); }
+});
+
+// ── POST /api/v1/auth/supabase-exchange ──────────────────────────────────────
+// Accepts a Supabase access token, verifies it, auto-provisions the user in
+// Prisma if needed, and returns a signed Express RS256 JWT.
+authRouter.post('/supabase-exchange', authLimiter, async (req, res, next) => {
+  try {
+    const { supabaseAccessToken } = req.body;
+    if (!supabaseAccessToken) return res.status(400).json({ error: 'missing_token' });
+
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!,
+    );
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(supabaseAccessToken);
+    if (error || !user) return res.status(401).json({ error: 'invalid_supabase_token' });
+
+    let dbUser = await prisma.user.findFirst({ where: { email: user.email } });
+    if (!dbUser) {
+      const role = (user.user_metadata?.user_type ?? 'FARMER').toUpperCase();
+      dbUser = await prisma.user.create({
+        data: {
+          id: randomUUID(),
+          phone: user.phone ?? user.email ?? user.id,
+          email: user.email,
+          role: role as any,
+          passwordHash: '',
+        },
+      });
+    }
+
+    const accessToken = await signAccessToken(dbUser.id, dbUser.role, [dbUser.role.toLowerCase()]);
+    logger.info({ event: 'supabase_exchange', userId: dbUser.id });
+    return res.json({ data: { accessToken } });
   } catch (err) { next(err); }
 });

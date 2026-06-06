@@ -22,8 +22,24 @@ mlRouter.post('/price', requireAuth, async (req, res, next) => {
     const body = priceSchema.safeParse(req.body);
     if (!body.success) return res.status(400).json({ error: 'validation_error', message: body.error.message });
 
-    // TODO: forward to ML service at process.env.ML_SERVICE_URL
-    // For now, return a deterministic mock
+    const mlUrl = process.env.ML_SERVICE_URL;
+    if (mlUrl) {
+      try {
+        const mlRes = await fetch(`${mlUrl}/predict/price`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body.data),
+          signal: AbortSignal.timeout(5000),
+        });
+        if (mlRes.ok) {
+          const mlData = await mlRes.json();
+          return res.json({ data: mlData });
+        }
+      } catch {
+        // fall through to stub if ML service is unavailable
+      }
+    }
+
     const basePrices: Record<string, number> = { maize: 45, coffee: 350, tea: 120, potatoes: 30 };
     const base = basePrices[body.data.crop.toLowerCase()] ?? 60;
     const gradeMultipliers: Record<string, number> = { AA: 1.2, AB: 1.0, PB: 0.85, C: 0.7 };
