@@ -27,10 +27,10 @@
         "./*"
       ],
       "@agridl/shared-types": [
-        "././packages/shared-types/src/index.ts"
+        "../../packages/shared-types/src/index.ts"
       ],
       "@agridl/api-client": [
-        "././packages/api-client/src/index.ts"
+        "../../packages/api-client/src/index.ts"
       ]
     }
   },
