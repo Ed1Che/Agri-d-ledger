@@ -1,16 +1,20 @@
-import { HardhatUserConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-toolbox";
-import * as dotenv from "dotenv";
+import "dotenv/config";
+import hardhatToolboxMochaEthersPlugin from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
+import { defineConfig } from "hardhat/config";
 
-dotenv.config();
-
-const config: HardhatUserConfig = {
+export default defineConfig({
+  plugins: [hardhatToolboxMochaEthersPlugin],
   solidity: {
-    version: "0.8.28",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200,
+    profiles: {
+      default: {
+        version: "0.8.28",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          viaIR: true,
+        },
       },
     },
   },
@@ -22,21 +26,29 @@ const config: HardhatUserConfig = {
   },
   networks: {
     sepolia: {
-      url: process.env.SEPOLIA_RPC_URL || "",
-      accounts: process.env.SEPOLIA_PRIVATE_KEY ?
-        [process.env.SEPOLIA_PRIVATE_KEY] : [],
+      type: "http",
+      chainType: "l1",
+      url: process.env.SEPOLIA_RPC_URL ?? "",
+      accounts: process.env.SEPOLIA_PRIVATE_KEY
+        ? [`0x${process.env.SEPOLIA_PRIVATE_KEY.replace(/^0x/, "")}`]
+        : [],
+      chainId: 11155111,
     },
     polygon: {
-      url: process.env.POLYGON_RPC_URL || "",
-      accounts: process.env.POLYGON_PRIVATE_KEY ?
-        [process.env.POLYGON_PRIVATE_KEY] : [],
+      type: "http",
+      url: process.env.POLYGON_RPC_URL ?? "",
+      accounts: process.env.POLYGON_PRIVATE_KEY
+        ? [`0x${process.env.POLYGON_PRIVATE_KEY.replace(/^0x/, "")}`]
+        : [],
+      chainId: 137,
     },
     amoy: {
-      url: process.env.AMOY_RPC_URL || "",
-      accounts: process.env.AMOY_PRIVATE_KEY ?
-        [process.env.AMOY_PRIVATE_KEY] : [],
+      type: "http",
+      url: process.env.AMOY_RPC_URL ?? "",
+      accounts: process.env.AMOY_PRIVATE_KEY
+        ? [`0x${process.env.AMOY_PRIVATE_KEY.replace(/^0x/, "")}`]
+        : [],
+      chainId: 80002,
     },
   },
-};
-
-export default config;
+});

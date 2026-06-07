@@ -1,7 +1,10 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Spinner } from '@/components/ui/spinner'
+import { Users, ShoppingCart, BarChart3, TrendingUp, DollarSign, Wheat } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 interface DashboardStats {
@@ -12,6 +15,13 @@ interface DashboardStats {
   totalBidValue: number
   farmerAvgProducePrice: number
 }
+
+const QUICK_LINKS = [
+  { href: '/dashboard/admin/farmers', label: 'Farmer Management', description: 'View and manage farmer profiles', icon: Users },
+  { href: '/dashboard/admin/buyers', label: 'Buyer Management', description: 'Manage bulk buyer accounts', icon: ShoppingCart },
+  { href: '/dashboard/admin/bids', label: 'Regional Bids', description: 'Create and manage regional bids', icon: Wheat },
+  { href: '/dashboard/admin/analytics', label: 'Analytics & Reports', description: 'Detailed platform analytics', icon: BarChart3 },
+]
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
@@ -25,47 +35,32 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadStats()
-  }, [])
+  useEffect(() => { loadStats() }, [])
 
   const loadStats = async () => {
     try {
       setLoading(true)
       const supabase = createClient()
 
-      // Get farmer count
-      const { count: farmerCount } = await supabase
-        .from('farmers')
-        .select('*', { count: 'exact', head: true })
+      const [
+        { count: farmerCount },
+        { count: buyerCount },
+        { count: activeBids },
+        { data: bidsData, count: totalBids },
+        { data: produceData },
+      ] = await Promise.all([
+        supabase.from('farmers').select('*', { count: 'exact', head: true }),
+        supabase.from('buyers').select('*', { count: 'exact', head: true }),
+        supabase.from('regional_bids').select('*', { count: 'exact', head: true }).eq('status', 'open'),
+        supabase.from('bids').select('bid_amount', { count: 'exact' }),
+        supabase.from('farmer_produce').select('asking_price_per_unit'),
+      ])
 
-      // Get buyer count
-      const { count: buyerCount } = await supabase
-        .from('buyers')
-        .select('*', { count: 'exact', head: true })
-
-      // Get active regional bids
-      const { count: activeBids } = await supabase
-        .from('regional_bids')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'open')
-
-      // Get total bids placed
-      const { data: bidsData, count: totalBids } = await supabase
-        .from('bids')
-        .select('bid_amount', { count: 'exact' })
-
-      // Calculate total bid value
       const totalValue = (bidsData || []).reduce((sum, bid) => sum + (bid.bid_amount || 0), 0)
-
-      // Get average farmer produce price
-      const { data: produceData } = await supabase
-        .from('farmer_produce')
-        .select('asking_price_per_unit')
-
-      const avgPrice = produceData && produceData.length > 0
-        ? produceData.reduce((sum, item) => sum + (item.asking_price_per_unit || 0), 0) / produceData.length
-        : 0
+      const avgPrice =
+        produceData && produceData.length > 0
+          ? produceData.reduce((sum, item) => sum + (item.asking_price_per_unit || 0), 0) / produceData.length
+          : 0
 
       setStats({
         totalFarmers: farmerCount || 0,
@@ -83,112 +78,72 @@ export default function AdminDashboard() {
   }
 
   if (loading) {
-    return <div className="text-center py-12"><p className="text-muted-foreground">Loading dashboard...</p></div>
+    return (
+      <div className="flex items-center justify-center py-24" aria-live="polite">
+        <Spinner className="size-8 text-primary" />
+      </div>
+    )
   }
+
+  const statCards = [
+    { label: 'Total Farmers', value: stats.totalFarmers.toLocaleString(), sub: 'Active on platform', icon: Users },
+    { label: 'Total Buyers', value: stats.totalBuyers.toLocaleString(), sub: 'Registered bulk buyers', icon: ShoppingCart },
+    { label: 'Active Regional Bids', value: stats.activeRegionalBids.toLocaleString(), sub: 'Open for bidding', icon: Wheat },
+    { label: 'Total Bids Placed', value: stats.totalBidsPlaced.toLocaleString(), sub: 'All time bids', icon: BarChart3 },
+    { label: 'Total Bid Value', value: `KES ${stats.totalBidValue.toLocaleString()}`, sub: 'Cumulative bid amount', icon: DollarSign },
+    { label: 'Avg Farmer Price', value: `KES ${stats.farmerAvgProducePrice.toFixed(2)}`, sub: 'Per unit average', icon: TrendingUp },
+  ]
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-        <p className="text-muted-foreground mt-2">
-          Platform overview and key metrics
-        </p>
+        <p className="text-muted-foreground mt-1">Platform overview and key metrics</p>
       </div>
 
       {error && (
         <Card className="border-destructive">
           <CardContent className="pt-6">
-            <p className="text-sm text-destructive">{error}</p>
+            <p role="alert" className="text-sm text-destructive">{error}</p>
           </CardContent>
         </Card>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Farmers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.totalFarmers}</p>
-            <p className="text-xs text-muted-foreground mt-2">Active farmers on platform</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Buyers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.totalBuyers}</p>
-            <p className="text-xs text-muted-foreground mt-2">Registered bulk buyers</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Regional Bids</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.activeRegionalBids}</p>
-            <p className="text-xs text-muted-foreground mt-2">Open for bidding</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Bids Placed</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.totalBidsPlaced}</p>
-            <p className="text-xs text-muted-foreground mt-2">All time bids</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Bid Value</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">${stats.totalBidValue.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-2">Cumulative bid amount</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Farmer Price</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">${stats.farmerAvgProducePrice.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-2">Per unit average</p>
-          </CardContent>
-        </Card>
+        {statCards.map(({ label, value, sub, icon: Icon }) => (
+          <Card key={label}>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+              <Icon className="h-4 w-4 text-muted-foreground" aria-hidden />
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{value}</p>
+              <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Navigation</CardTitle>
-          <CardDescription>Manage platform data and operations</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <a href="/dashboard/admin/farmers" className="p-4 border rounded-lg hover:bg-secondary transition-colors">
-            <p className="font-semibold">Farmer Management</p>
-            <p className="text-sm text-muted-foreground">View and manage farmer profiles</p>
-          </a>
-          <a href="/dashboard/admin/buyers" className="p-4 border rounded-lg hover:bg-secondary transition-colors">
-            <p className="font-semibold">Buyer Management</p>
-            <p className="text-sm text-muted-foreground">Manage bulk buyer accounts</p>
-          </a>
-          <a href="/dashboard/admin/bids" className="p-4 border rounded-lg hover:bg-secondary transition-colors">
-            <p className="font-semibold">Regional Bids</p>
-            <p className="text-sm text-muted-foreground">Create and manage regional bids</p>
-          </a>
-          <a href="/dashboard/admin/analytics" className="p-4 border rounded-lg hover:bg-secondary transition-colors">
-            <p className="font-semibold">Analytics & Reports</p>
-            <p className="text-sm text-muted-foreground">Detailed platform analytics</p>
-          </a>
-        </CardContent>
-      </Card>
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Quick Navigation</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {QUICK_LINKS.map(({ href, label, description, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex items-start gap-4 p-4 border rounded-lg hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                <Icon className="h-5 w-5 text-primary" aria-hidden />
+              </div>
+              <div>
+                <p className="font-semibold">{label}</p>
+                <p className="text-sm text-muted-foreground">{description}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

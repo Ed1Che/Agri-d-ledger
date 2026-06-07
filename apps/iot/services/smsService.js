@@ -8,11 +8,11 @@ const AT = AfricasTalking({
 
 const sms = AT.SMS
 
-const sendVerificationSMS = async (phoneNumber, listingId, cropType, riskLevel, verificationStatus) => {
+const sendVerificationSMS = async (phoneNumber, produceId, cropType, riskLevel, verificationStatus) => {
   try {
     const riskEmoji = { LOW: '✓', MEDIUM: '⚠', HIGH: '✗' }
 
-    const message = `Agri-D Ledger: Your ${cropType} listing (${listingId}) has been verified.\nRisk Level: ${riskEmoji[riskLevel]} ${riskLevel}\nStatus: ${verificationStatus}\n${riskLevel === 'LOW' ? 'Your produce is ready for buyers.' : riskLevel === 'MEDIUM' ? 'Please check storage conditions.' : 'Urgent: Improve storage conditions immediately.'}`
+    const message = `Agri-D Ledger: Your ${cropType} produce has been verified.\nRisk Level: ${riskEmoji[riskLevel]} ${riskLevel}\nStatus: ${verificationStatus}\n${riskLevel === 'LOW' ? 'Your produce is ready for buyers.' : riskLevel === 'MEDIUM' ? 'Please check storage conditions.' : 'Urgent: Improve storage conditions immediately.'}`
 
     const result = await sms.send({
       to: [phoneNumber],

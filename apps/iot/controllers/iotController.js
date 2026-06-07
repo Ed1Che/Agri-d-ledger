@@ -4,13 +4,17 @@ const { runVerification } = require('../services/verificationEngine')
 const { generateReport } = require('../services/reportGenerator')
 const { sendVerificationSMS } = require('../services/smsService')
 
-// Verify a single listing
-const verifyListing = async (listing) => {
+// Verify a single produce entry
+const verifyProduce = async (produce) => {
   try {
-    console.log(`Verifying listing: ${listing.listing_id} (${listing.crop_type})`)
+    const produceId = produce.id
+    const produceTypeName = produce.produce_types?.name ?? 'unknown'
+    const phoneNumber = produce.farmers?.phone_number
+
+    console.log(`Verifying produce: ${produceId} (${produceTypeName})`)
 
     // Step 1 - Simulate sensor readings
-    const readings = simulateSensorReadings(listing.crop_type)
+    const readings = simulateSensorReadings(produceTypeName)
     console.log('Sensor readings:', readings)
 
     // Step 2 - Run verification
@@ -18,7 +22,7 @@ const verifyListing = async (listing) => {
     console.log('Verification result:', verification.riskLevel)
 
     // Step 3 - Generate report with hash
-    const report = generateReport(listing.listing_id, readings, verification)
+    const report = generateReport(produceId, readings, verification)
     console.log('Verification hash:', report.verificationHash)
 
     // Step 4 - Save verification to Supabase
@@ -26,7 +30,7 @@ const verifyListing = async (listing) => {
       .from('iot_verifications')
       .insert({
         verification_id: `VER-${Date.now()}`,
-        listing_id: listing.listing_id,
+        produce_id: produceId,
         temperature: readings.temperature,
         humidity: readings.humidity,
         moisture: readings.moisture,
@@ -43,44 +47,46 @@ const verifyListing = async (listing) => {
       return
     }
 
-    // Step 5 - Update produce listing
-    const { error: listError } = await supabase
-      .from('produce_listings')
+    // Step 5 - Update farmer_produce
+    const newStatus = verification.passed ? 'approved' : 'rejected'
+    const { error: produceError } = await supabase
+      .from('farmer_produce')
       .update({
         iot_verified: true,
-        status: verification.passed ? 'verified' : 'flagged'
+        status: newStatus
       })
-      .eq('listing_id', listing.listing_id)
+      .eq('id', produceId)
 
-    if (listError) {
-      console.log('Listing update error:', listError.message)
+    if (produceError) {
+      console.log('Produce update error:', produceError.message)
       return
     }
 
-    console.log(`✓ Listing ${listing.listing_id} verified — Risk: ${verification.riskLevel}`)
+    console.log(`✓ Produce ${produceId} verified — Risk: ${verification.riskLevel}`)
 
-// Send SMS to farmer
-await sendVerificationSMS(
-  listing.phone_number,
-  listing.listing_id,
-  listing.crop_type,
-  verification.riskLevel,
-  report.verificationStatus
-)
+    if (phoneNumber) {
+      await sendVerificationSMS(
+        phoneNumber,
+        produceId,
+        produceTypeName,
+        verification.riskLevel,
+        report.verificationStatus
+      )
+    }
 
-return report
+    return report
 
   } catch (error) {
     console.log('Verification error:', error.message)
   }
 }
 
-// Check for unverified listings and process them
-const checkAndVerifyListings = async () => {
+// Check for unverified produce entries and process them
+const checkAndVerifyProduce = async () => {
   try {
     const { data, error } = await supabase
-      .from('produce_listings')
-      .select('*')
+      .from('farmer_produce')
+      .select('*, produce_types(name), farmers(phone_number)')
       .eq('iot_verified', false)
       .eq('status', 'pending')
       .limit(10)
@@ -91,14 +97,14 @@ const checkAndVerifyListings = async () => {
     }
 
     if (!data || data.length === 0) {
-      console.log('No pending listings to verify')
+      console.log('No pending produce to verify')
       return
     }
 
-    console.log(`Found ${data.length} pending listing(s) to verify`)
+    console.log(`Found ${data.length} pending produce entry(s) to verify`)
 
-    for (const listing of data) {
-      await verifyListing(listing)
+    for (const produce of data) {
+      await verifyProduce(produce)
     }
 
   } catch (error) {
@@ -108,48 +114,46 @@ const checkAndVerifyListings = async () => {
 
 // Manual trigger endpoint
 const triggerVerification = async (req, res) => {
-  const { listingId } = req.params
+  const { produceId } = req.params
 
-  if (listingId) {
-    // Verify specific listing
+  if (produceId) {
     const { data, error } = await supabase
-      .from('produce_listings')
-      .select('*')
-      .eq('listing_id', listingId)
+      .from('farmer_produce')
+      .select('*, produce_types(name), farmers(phone_number)')
+      .eq('id', produceId)
       .single()
 
     if (error || !data) {
-      return res.status(404).json({ error: 'Listing not found' })
+      return res.status(404).json({ error: 'Produce not found' })
     }
 
-    const report = await verifyListing(data)
+    const report = await verifyProduce(data)
     return res.json({ success: true, report })
   }
 
-  // Verify all pending
-  await checkAndVerifyListings()
+  await checkAndVerifyProduce()
   res.json({ success: true, message: 'Verification triggered' })
 }
 
-// Get verification report for a listing
+// Get verification report for a produce entry
 const getVerificationReport = async (req, res) => {
-  const { listingId } = req.params
+  const { produceId } = req.params
 
   const { data, error } = await supabase
     .from('iot_verifications')
     .select('*')
-    .eq('listing_id', listingId)
+    .eq('produce_id', produceId)
     .single()
 
   if (error || !data) {
-    return res.status(404).json({ error: 'No verification found for this listing' })
+    return res.status(404).json({ error: 'No verification found for this produce' })
   }
 
   res.json({ success: true, verification: data })
 }
 
 module.exports = {
-  checkAndVerifyListings,
+  checkAndVerifyProduce,
   triggerVerification,
   getVerificationReport
 }

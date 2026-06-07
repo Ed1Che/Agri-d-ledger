@@ -1,12 +1,14 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { network } from "hardhat";
+
+const { ethers } = await network.create();
+const reportHash = ethers.keccak256(ethers.toUtf8Bytes("ipfs://QmLabReport"));
 
 describe("QualityVerification", function () {
   let identityRegistry: any, productRegistry: any, qualityVerification: any;
   let owner: any, farmer: any, regulator: any, lab: any, stranger: any;
   let FARMER_ROLE: string, REGULATOR_ROLE: string;
   let productId: string;
-  const reportHash = ethers.keccak256(ethers.toUtf8Bytes("ipfs://QmLabReport"));
 
   beforeEach(async () => {
     [owner, farmer, regulator, lab, stranger] = await ethers.getSigners();
@@ -89,6 +91,6 @@ describe("QualityVerification", function () {
   it("Non-accredited lab cannot submit lab report", async () => {
     await expect(
       qualityVerification.connect(stranger).submitLabReport(productId, 200, 1200, reportHash)
-    ).to.be.revertedWith("Only accredited labs can submit reports");
+    ).to.be.revertedWithCustomError(qualityVerification, "NotAccreditedLab");
   });
 });

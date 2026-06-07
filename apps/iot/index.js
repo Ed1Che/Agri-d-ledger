@@ -2,7 +2,7 @@ require('dotenv').config()
 const express = require('express')
 const cron = require('node-cron')
 const iotRoutes = require('./routes/iotRoutes')
-const { checkAndVerifyListings } = require('./controllers/iotController')
+const { checkAndVerifyProduce } = require('./controllers/iotController')
 
 const app = express()
 const PORT = process.env.PORT || 3003
@@ -22,7 +22,7 @@ app.get('/', (req, res) => {
 // Auto verification every 30 seconds
 cron.schedule('*/30 * * * * *', async () => {
   console.log('--- Running scheduled verification check ---')
-  await checkAndVerifyListings()
+  await checkAndVerifyProduce()
 })
 
 // Start server

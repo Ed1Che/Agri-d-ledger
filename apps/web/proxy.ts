@@ -1,11 +1,12 @@
-// apps/web/middleware.ts
+// apps/web/proxy.ts
+// Next.js 16 proxy (replaces middleware.ts).
 // Refreshes the Supabase auth session on every request so Server Components
 // always receive a valid session token. Required when using @supabase/ssr.
 
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(

@@ -1,15 +1,14 @@
 {
   "compilerOptions": {
-    "target": "es2020",
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "lib": ["es2023"],
+    "module": "node20",
+    "target": "es2023",
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "types": ["node", "mocha"],
     "ignoreDeprecations": "6.0",
     "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "rootDir": ".",
-    "outDir": "dist"
+    "esModuleInterop": true
   },
-  "include": ["./scripts", "./test", "./hardhat.config.ts"],
-  "files": ["./hardhat.config.ts"]
+  "include": ["./hardhat.config.ts", "./contracts", "./test", "./scripts"]
 }

@@ -14,6 +14,26 @@ const isValidLocation = (value) =>
 const isValidMenuChoice = (value, options) =>
   options.includes(value.trim())
 
+// ── Lookup helpers ────────────────────────────────────────────────────
+
+const getFarmerByPhone = async (phoneNumber) => {
+  const { data } = await supabase
+    .from('farmers')
+    .select('id')
+    .eq('phone_number', phoneNumber)
+    .single()
+  return data
+}
+
+const getProduceTypeByName = async (name) => {
+  const { data } = await supabase
+    .from('produce_types')
+    .select('id, unit_of_measurement')
+    .ilike('name', name)
+    .single()
+  return data
+}
+
 // ── Main USSD handler ─────────────────────────────────────────────────
 
 const handleUssd = async (req, res) => {
@@ -78,31 +98,41 @@ const handleUssd = async (req, res) => {
         response = `CON Invalid choice.\n1. Confirm\n2. Cancel`
       } else if (userInput === '1') {
         const crops = { '1': 'Maize', '2': 'Potatoes' }
-        const crop = crops[textArray[1]]
+        const cropName = crops[textArray[1]]
         const quantity = textArray[2]
         const price = textArray[3]
-        const listingId = `LST-${Date.now()}`
 
-        const { error } = await supabase
-          .from('produce_listings')
-          .insert({
-            listing_id: listingId,
-            phone_number: phoneNumber,
-            crop_type: crop,
-            quantity: parseFloat(quantity),
-            asked_price: parseFloat(price),
-            status: 'pending',
-          })
-
-        if (error) {
-          console.error('Listing insert error:', error.message)
-          response = `END Something went wrong. Please try again.`
+        const farmer = await getFarmerByPhone(phoneNumber)
+        if (!farmer) {
+          response = `END You are not registered.\nDial back and choose 4 to register first.`
         } else {
-          // Notify the Express API so ML/IoT modules can process the listing
-          notifyApiOfListing(listingId, phoneNumber, crop, quantity, price).catch(
-            (err) => console.error('API notify failed (non-fatal):', err.message)
-          )
-          response = `END Listing submitted!\nRef: ${listingId}\n\nYou will receive an SMS when a buyer is found.`
+          const produceType = await getProduceTypeByName(cropName)
+          if (!produceType) {
+            response = `END Produce type not found. Please contact support.`
+          } else {
+            const { data: inserted, error } = await supabase
+              .from('farmer_produce')
+              .insert({
+                farmer_id: farmer.id,
+                produce_type_id: produceType.id,
+                quantity_available: parseFloat(quantity),
+                unit_of_measurement: produceType.unit_of_measurement ?? 'bags',
+                asking_price_per_unit: parseFloat(price),
+                status: 'pending',
+              })
+              .select('id')
+              .single()
+
+            if (error) {
+              console.error('Produce insert error:', error.message)
+              response = `END Something went wrong. Please try again.`
+            } else {
+              notifyApiOfListing(inserted.id, phoneNumber, cropName, quantity, price).catch(
+                (err) => console.error('API notify failed (non-fatal):', err.message)
+              )
+              response = `END Listing submitted!\nRef: ${inserted.id.slice(0, 8).toUpperCase()}\n\nYou will receive an SMS when a buyer is found.`
+            }
+          }
         }
       } else {
         response = `END Listing cancelled.`
@@ -113,20 +143,26 @@ const handleUssd = async (req, res) => {
     // ─────────────────────────────────────────────────────────────────
 
     } else if (text === '2') {
-      const { data, error } = await supabase
-        .from('produce_listings')
-        .select('crop_type, quantity, asked_price, status')
-        .eq('phone_number', phoneNumber)
-        .order('listed_at', { ascending: false })
-        .limit(3)
+      const farmer = await getFarmerByPhone(phoneNumber)
 
-      if (error || !data || data.length === 0) {
-        response = `END You have no listings yet.`
+      if (!farmer) {
+        response = `END You are not registered.\nDial back and choose 4 to register first.`
       } else {
-        const list = data
-          .map((l) => `${l.crop_type} - ${l.quantity} bags @ KES ${l.asked_price} - ${l.status}`)
-          .join('\n')
-        response = `END Your listings:\n${list}`
+        const { data, error } = await supabase
+          .from('farmer_produce')
+          .select('quantity_available, asking_price_per_unit, status, produce_types(name)')
+          .eq('farmer_id', farmer.id)
+          .order('created_at', { ascending: false })
+          .limit(3)
+
+        if (error || !data || data.length === 0) {
+          response = `END You have no listings yet.`
+        } else {
+          const list = data
+            .map((l) => `${l.produce_types?.name ?? 'Produce'} - ${l.quantity_available} bags @ KES ${l.asking_price_per_unit} - ${l.status}`)
+            .join('\n')
+          response = `END Your listings:\n${list}`
+        }
       }
 
     // ─────────────────────────────────────────────────────────────────
@@ -140,25 +176,25 @@ const handleUssd = async (req, res) => {
       if (!isValidMenuChoice(userInput, ['1', '2'])) {
         response = `CON Invalid choice.\n1. Maize\n2. Potatoes`
       } else {
-        const crops = { '1': 'maize', '2': 'potatoes' }
-        const crop = crops[userInput]
-        // Fetch the latest suggested price from recent verified listings
+        const crops = { '1': 'Maize', '2': 'Potatoes' }
+        const cropName = crops[userInput]
+
         const { data } = await supabase
-          .from('produce_listings')
-          .select('suggested_price, asked_price')
-          .eq('crop_type', crop === 'maize' ? 'Maize' : 'Potatoes')
-          .eq('status', 'verified')
-          .order('listed_at', { ascending: false })
+          .from('farmer_produce')
+          .select('suggested_price, asking_price_per_unit, produce_types!inner(name)')
+          .eq('produce_types.name', cropName)
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false })
           .limit(5)
 
         if (!data || data.length === 0) {
-          response = `END No recent price data for ${crop}.\nCheck back soon.`
+          response = `END No recent price data for ${cropName}.\nCheck back soon.`
         } else {
           const prices = data
-            .map((r) => r.suggested_price ?? r.asked_price)
+            .map((r) => r.suggested_price ?? r.asking_price_per_unit)
             .filter(Boolean)
           const avg = (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(0)
-          response = `END ${crop.charAt(0).toUpperCase() + crop.slice(1)} prices:\nAvg market: KES ${avg}/bag\nBased on ${prices.length} recent listings`
+          response = `END ${cropName} prices:\nAvg market: KES ${avg}/bag\nBased on ${prices.length} recent listings`
         }
       }
 
@@ -187,8 +223,8 @@ const handleUssd = async (req, res) => {
           .from('farmers')
           .upsert({
             phone_number: phoneNumber,
-            name,
-            location,
+            farmer_name: name,
+            location_region: location,
             is_verified: false,
           })
 
@@ -205,20 +241,16 @@ const handleUssd = async (req, res) => {
     // ─────────────────────────────────────────────────────────────────
 
     } else if (text === '5') {
-      const { data: farmer } = await supabase
-        .from('farmers')
-        .select('id')
-        .eq('phone_number', phoneNumber)
-        .single()
+      const farmer = await getFarmerByPhone(phoneNumber)
 
       if (!farmer) {
         response = `END No farmer profile found.\nDial back and choose 4 to register.`
       } else {
         const { data: bids } = await supabase
           .from('bid_confirmations')
-          .select('id, status, bids(buyer_price_per_unit, regional_bids(region))')
+          .select('id, confirmation_status, bids(offered_price_per_unit, regional_bids(region))')
           .eq('farmer_id', farmer.id)
-          .eq('status', 'pending')
+          .eq('confirmation_status', 'pending')
           .limit(3)
 
         if (!bids || bids.length === 0) {
@@ -226,7 +258,7 @@ const handleUssd = async (req, res) => {
         } else {
           const list = bids.map((b, i) => {
             const region = b.bids?.regional_bids?.region ?? 'Unknown'
-            const price = b.bids?.buyer_price_per_unit ?? 0
+            const price = b.bids?.offered_price_per_unit ?? 0
             return `${i + 1}. ${region} KES ${price}/unit`
           }).join('\n')
           response = `CON Pending bids:\n${list}\n\nEnter number to confirm (0=skip):`
@@ -239,17 +271,13 @@ const handleUssd = async (req, res) => {
       } else if (!isValidNumber(userInput) || Number(userInput) > 3) {
         response = `CON Invalid selection. Enter 1-3 or 0 to skip:`
       } else {
-        const { data: farmer } = await supabase
-          .from('farmers')
-          .select('id')
-          .eq('phone_number', phoneNumber)
-          .single()
+        const farmer = await getFarmerByPhone(phoneNumber)
 
         const { data: bids } = await supabase
           .from('bid_confirmations')
-          .select('id, bids(buyer_price_per_unit, regional_bids(region))')
+          .select('id, bids(offered_price_per_unit, regional_bids(region))')
           .eq('farmer_id', farmer.id)
-          .eq('status', 'pending')
+          .eq('confirmation_status', 'pending')
           .limit(3)
 
         const chosen = bids?.[Number(userInput) - 1]
@@ -257,7 +285,7 @@ const handleUssd = async (req, res) => {
           response = `END Bid not found. Please try again.`
         } else {
           const region = chosen.bids?.regional_bids?.region ?? 'Unknown'
-          const price = chosen.bids?.buyer_price_per_unit ?? 0
+          const price = chosen.bids?.offered_price_per_unit ?? 0
           response = `CON Confirm bid from ${region}\nKES ${price}/unit?\n1. Accept\n2. Reject`
         }
       }
@@ -266,27 +294,26 @@ const handleUssd = async (req, res) => {
       if (!isValidMenuChoice(userInput, ['1', '2'])) {
         response = `CON Invalid choice.\n1. Accept\n2. Reject`
       } else {
-        const { data: farmer } = await supabase
-          .from('farmers')
-          .select('id')
-          .eq('phone_number', phoneNumber)
-          .single()
+        const farmer = await getFarmerByPhone(phoneNumber)
 
         const { data: bids } = await supabase
           .from('bid_confirmations')
           .select('id')
           .eq('farmer_id', farmer.id)
-          .eq('status', 'pending')
+          .eq('confirmation_status', 'pending')
           .limit(3)
 
         const chosen = bids?.[Number(textArray[1]) - 1]
         if (!chosen) {
           response = `END Session expired. Please try again.`
         } else {
-          const newStatus = userInput === '1' ? 'accepted' : 'rejected'
+          const newStatus = userInput === '1' ? 'confirmed' : 'rejected'
           const { error } = await supabase
             .from('bid_confirmations')
-            .update({ status: newStatus, responded_at: new Date().toISOString() })
+            .update({
+              confirmation_status: newStatus,
+              confirmation_timestamp: new Date().toISOString()
+            })
             .eq('id', chosen.id)
 
           response = error
@@ -309,7 +336,7 @@ const handleUssd = async (req, res) => {
 }
 
 // ── Fire-and-forget: notify Express API so the ML module can price the listing
-async function notifyApiOfListing(listingId, phoneNumber, cropType, quantity, askedPrice) {
+async function notifyApiOfListing(produceId, phoneNumber, cropType, quantity, askedPrice) {
   const apiUrl = process.env.INTERNAL_API_URL || 'http://localhost:3001'
   const secret = process.env.INTERNAL_API_SECRET || ''
 
@@ -319,7 +346,7 @@ async function notifyApiOfListing(listingId, phoneNumber, cropType, quantity, as
       'Content-Type': 'application/json',
       'x-internal-secret': secret,
     },
-    body: JSON.stringify({ listingId, phoneNumber, cropType, quantity, askedPrice }),
+    body: JSON.stringify({ produceId, phoneNumber, cropType, quantity, askedPrice }),
   })
 }
 

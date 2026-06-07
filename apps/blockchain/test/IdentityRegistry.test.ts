@@ -1,6 +1,8 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { network } from "hardhat";
 import { keccak256, toUtf8Bytes } from "ethers";
+
+const { ethers } = await network.create();
 
 describe("IdentityRegistry", function () {
   let registry: any;

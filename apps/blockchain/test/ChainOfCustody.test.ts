@@ -1,5 +1,7 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { network } from "hardhat";
+
+const { ethers } = await network.create();
 
 describe("ChainOfCustody", function () {
   let identityRegistry: any, productRegistry: any, chainOfCustody: any;
@@ -59,14 +61,15 @@ describe("ChainOfCustody", function () {
     await chainOfCustody.connect(farmer).initiateTransfer(productId, cooperative.address);
     await chainOfCustody.connect(cooperative).acceptTransfer(productId, "-1.286,36.817", "Good condition");
     const history = await chainOfCustody.getCustodyHistory(productId);
-    expect(history.length).to.equal(1);
-    expect(history[0].from).to.equal(farmer.address);
-    expect(history[0].to).to.equal(cooperative.address);
+    // history[0] = initial custody record (address(0) → farmer), history[1] = transfer
+    expect(history.length).to.equal(2);
+    expect(history[1].from).to.equal(farmer.address);
+    expect(history[1].to).to.equal(cooperative.address);
   });
 
   it("Stranger cannot initiate transfer", async () => {
     await expect(
       chainOfCustody.connect(stranger).initiateTransfer(productId, cooperative.address)
-    ).to.be.revertedWith("Not the current owner");
+    ).to.be.revertedWithCustomError(chainOfCustody, "NotCurrentOwner");
   });
 });

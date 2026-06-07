@@ -1,6 +1,8 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { network } from "hardhat";
+
+const conn = await network.create();
+const { ethers } = conn;
 
 describe("PaymentEscrow", function () {
   let identityRegistry: any, productRegistry: any, chainOfCustody: any;
@@ -100,7 +102,7 @@ describe("PaymentEscrow", function () {
       (l: any) => l.fragment?.name === "EscrowCreated"
     ).args.escrowId;
 
-    await time.increase(ONE_DAY + 1);
+    await conn.networkHelpers.time.increase(ONE_DAY + 1);
 
     await paymentEscrow.connect(buyer).claimRefund(escrowId);
     expect(await paymentEscrow.balances(buyer.address)).to.equal(PAYMENT);
@@ -118,7 +120,7 @@ describe("PaymentEscrow", function () {
 
     await expect(
       paymentEscrow.releasePayment(escrowId)
-    ).to.be.revertedWith("Product is not certified");
+    ).to.be.revertedWithCustomError(paymentEscrow, "ProductNotCertified");
   });
 
   it("Either party can raise a dispute", async () => {

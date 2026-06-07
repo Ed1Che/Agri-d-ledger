@@ -1,5 +1,7 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { network } from "hardhat";
+
+const { ethers } = await network.create();
 
 describe("ProductRegistry", function () {
   let identityRegistry: any;
@@ -45,7 +47,7 @@ describe("ProductRegistry", function () {
       productRegistry.connect(nonFarmer).registerProduct(
         "Coffee", 500, 1738800000, "-0.416,36.948", metadataHash
       )
-    ).to.be.revertedWith("Caller is not a registered farmer");
+    ).to.be.revertedWithCustomError(productRegistry, "NotAFarmer");
   });
 
   it("Product ID is unique per transaction", async () => {

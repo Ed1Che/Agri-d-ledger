@@ -1,9 +1,8 @@
 const crypto = require('crypto')
 
-const generateReport = (listingId, readings, verification) => {
-  // Generate hash of sensor readings for blockchain
+const generateReport = (produceId, readings, verification) => {
   const dataToHash = JSON.stringify({
-    listingId,
+    produceId,
     temperature: readings.temperature,
     humidity: readings.humidity,
     moisture: readings.moisture,
@@ -17,7 +16,7 @@ const generateReport = (listingId, readings, verification) => {
     .digest('hex')
 
   return {
-    listingId,
+    produceId,
     sensorId: readings.sensorId,
     cropType: readings.cropType,
     readings: {

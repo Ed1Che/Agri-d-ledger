@@ -8,6 +8,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
 enum Role {
   FARMER
   BUYER
@@ -23,30 +25,79 @@ enum TransactionStatus {
   DISPUTED
 }
 
+// Kept for legacy Produce model used by Transaction
 enum ProduceStatus {
   AVAILABLE
   RESERVED
   SOLD
 }
 
+enum FarmerProduceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SOLD
+
+  @@map("farmer_produce_status")
+}
+
+enum QualityGrade {
+  EXCELLENT
+  GOOD
+  FAIR
+
+  @@map("quality_grade")
+}
+
+enum RegionalBidStatus {
+  OPEN
+  CLOSED
+  APPROVED
+
+  @@map("regional_bid_status")
+}
+
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+
+  @@map("bid_status")
+}
+
+enum BidConfirmationStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  EXPIRED
+
+  @@map("bid_confirmation_status")
+}
+
+// ─── Auth & User ──────────────────────────────────────────────────────────────
+
 model User {
-  id            String    @id @default(uuid())
-  phone         String    @unique
-  email         String?   @unique
+  id            String   @id @default(uuid())
+  phone         String   @unique
+  email         String?  @unique
   passwordHash  String?
-  role          Role      @default(FARMER)
-  mfaEnabled    Boolean   @default(false)
+  role          Role     @default(FARMER)
+  mfaEnabled    Boolean  @default(false)
   mfaSecret     String?
   cooperativeId String?
   nationalId    String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  produce       Produce[]
-  buyTransactions Transaction[] @relation("buyer")
-  farmTransactions Transaction[] @relation("farmer")
-  refreshTokens RefreshToken[]
-  cooperative   Cooperative?  @relation(fields: [cooperativeId], references: [id])
+  cooperative      Cooperative?    @relation(fields: [cooperativeId], references: [id])
+  produce          Produce[]
+  buyTransactions  Transaction[]   @relation("buyer")
+  farmTransactions Transaction[]   @relation("farmer")
+  refreshTokens    RefreshToken[]
+  farmer           Farmer?
+  buyer            Buyer?
+  sentMessages     Communication[] @relation("sender")
+  receivedMessages Communication[] @relation("recipient")
 
   @@index([phone])
   @@index([role])
@@ -58,7 +109,8 @@ model RefreshToken {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -68,22 +120,82 @@ model Cooperative {
   name      String
   region    String
   createdAt DateTime @default(now())
-  members   User[]
+
+  members User[]
 }
 
+// ─── Farmer & Buyer Profiles ──────────────────────────────────────────────────
+// Separate profile tables to match Supabase schema; linked to User via userId.
+// Merge note: User.role still controls access; these store domain-specific data.
+
+model Farmer {
+  id                     String   @id @default(uuid())
+  userId                 String?  @unique
+  farmerName             String?
+  phoneNumber            String   @unique
+  locationRegion         String?
+  villageName            String?
+  farmSize               String?
+  farmingExperienceYears Int?
+  isVerified             Boolean  @default(false)
+  createdAt              DateTime @default(now())
+
+  user             User?             @relation(fields: [userId], references: [id])
+  farmerProduce    FarmerProduce[]
+  ussdSessions     UssdSession[]
+  bidConfirmations BidConfirmation[]
+
+  @@map("farmers")
+  @@index([phoneNumber])
+}
+
+model Buyer {
+  id             String   @id @default(uuid())
+  userId         String?  @unique
+  companyName    String
+  contactPerson  String?
+  phoneNumber    String?
+  email          String?
+  locationRegion String?
+  createdAt      DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+  bids Bid[]
+
+  @@map("buyers")
+}
+
+// ─── Produce Types ────────────────────────────────────────────────────────────
+
+model ProduceType {
+  id                String @id @default(uuid())
+  name              String
+  category          String?
+  unitOfMeasurement String
+
+  farmerProduce FarmerProduce[]
+  regionalBids  RegionalBid[]
+
+  @@map("produce_types")
+}
+
+// ─── Legacy Produce (Transaction-linked) ─────────────────────────────────────
+// Merge note: new produce listings should use FarmerProduce below.
+// This model is retained so existing Transaction/LedgerEntry records remain valid.
+
 model Produce {
-  id           String        @id @default(uuid())
-  farmerId     String
-  crop         String
-  gradeCode    String
-  weightKg     Decimal       @db.Decimal(10, 2)
-  pricePerKg   Decimal?      @db.Decimal(10, 2)
-  harvestDate  DateTime
-  county       String
-  status       ProduceStatus @default(AVAILABLE)
-  iotSensorId  String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id          String        @id @default(uuid())
+  farmerId    String
+  crop        String
+  gradeCode   String
+  weightKg    Decimal       @db.Decimal(10, 2)
+  pricePerKg  Decimal?      @db.Decimal(10, 2)
+  harvestDate DateTime
+  county      String
+  status      ProduceStatus @default(AVAILABLE)
+  iotSensorId String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   farmer       User          @relation(fields: [farmerId], references: [id])
   transactions Transaction[]
@@ -93,23 +205,191 @@ model Produce {
   @@index([county])
 }
 
-model Transaction {
-  id            String            @id @default(uuid())
-  farmerId      String
-  buyerId       String
-  produceId     String
-  weightKg      Decimal           @db.Decimal(10, 2)
-  pricePerKg    Decimal           @db.Decimal(10, 2)
-  totalAmount   Decimal           @db.Decimal(14, 2)
-  status        TransactionStatus @default(PENDING)
-  onChainHash   String?
-  blockNumber   String?
-  createdAt     DateTime          @default(now())
-  confirmedAt   DateTime?
+// ─── Farmer Produce (Marketplace Listings) ───────────────────────────────────
 
-  farmer        User              @relation("farmer", fields: [farmerId], references: [id])
-  buyer         User              @relation("buyer", fields: [buyerId], references: [id])
-  produce       Produce           @relation(fields: [produceId], references: [id])
+model FarmerProduce {
+  id                 String              @id @default(uuid())
+  farmerId           String
+  produceTypeId      String?
+  quantityAvailable  Decimal             @db.Decimal(10, 2)
+  unitOfMeasurement  String              @default("bags")
+  askingPricePerUnit Decimal             @db.Decimal(10, 2)
+  suggestedPrice     Decimal?            @db.Decimal(10, 2)
+  harvestDate        DateTime?           @db.Date
+  qualityGrade       QualityGrade?
+  locationRegion     String?
+  status             FarmerProduceStatus @default(PENDING)
+  iotVerified        Boolean             @default(false)
+  blockchainRecorded Boolean             @default(false)
+  notes              String?
+  createdAt          DateTime            @default(now())
+
+  farmer           Farmer            @relation(fields: [farmerId], references: [id])
+  produceType      ProduceType?      @relation(fields: [produceTypeId], references: [id])
+  iotVerifications IotVerification[]
+
+  @@map("farmer_produce")
+  @@index([farmerId])
+  @@index([status])
+}
+
+// ─── USSD Sessions ────────────────────────────────────────────────────────────
+// Merge note: collectedData maps to SQL jsonb; expiresAt default matches
+// SQL's `now() + '00:05:00'::interval` via dbgenerated.
+
+model UssdSession {
+  sessionId     String   @id
+  phoneNumber   String?
+  currentStep   String   @default("main_menu")
+  collectedData Json     @default("{}")
+  status        String   @default("active")
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime @default(dbgenerated("now() + interval '5 minutes'"))
+
+  farmer Farmer? @relation(fields: [phoneNumber], references: [phoneNumber])
+
+  @@map("ussd_sessions")
+}
+
+// ─── Regional Bids ────────────────────────────────────────────────────────────
+
+model RegionalBid {
+  id                             String            @id @default(uuid())
+  region                         String
+  produceTypeId                  String?
+  averagePricePerUnit            Decimal           @db.Decimal(10, 2)
+  totalQuantityAvailable         Decimal           @db.Decimal(10, 2)
+  participatingFarmersCount      Int               @default(0)
+  negotiationThresholdPercentage Decimal?          @default(5) @db.Decimal(5, 2)
+  status                         RegionalBidStatus @default(OPEN)
+  bidCloseDate                   DateTime?         @db.Date
+  createdAt                      DateTime          @default(now())
+
+  produceType    ProduceType?    @relation(fields: [produceTypeId], references: [id])
+  bids           Bid[]
+  communications Communication[]
+
+  @@map("regional_bids")
+  @@index([region, status])
+}
+
+// ─── Bids ─────────────────────────────────────────────────────────────────────
+
+model Bid {
+  id                             String    @id @default(uuid())
+  regionalBidId                  String?
+  buyerId                        String?
+  offeredPricePerUnit            Decimal   @db.Decimal(10, 2)
+  totalQuantityBid               Decimal   @db.Decimal(10, 2)
+  bidAmount                      Decimal   @db.Decimal(14, 2)
+  negotiationDeviationPercentage Decimal   @db.Decimal(5, 2)
+  status                         BidStatus @default(PENDING)
+  createdAt                      DateTime  @default(now())
+
+  regionalBid      RegionalBid?      @relation(fields: [regionalBidId], references: [id])
+  buyer            Buyer?            @relation(fields: [buyerId], references: [id])
+  bidConfirmations BidConfirmation[]
+  communications   Communication[]
+
+  @@map("bids")
+  @@index([regionalBidId, status])
+}
+
+// ─── Bid Confirmations ────────────────────────────────────────────────────────
+
+model BidConfirmation {
+  id                    String                @id @default(uuid())
+  bidId                 String?
+  farmerId              String?
+  confirmationStatus    BidConfirmationStatus @default(PENDING)
+  confirmationTimestamp DateTime?
+  notificationMethod    String                @default("in_app")
+
+  bid    Bid?    @relation(fields: [bidId], references: [id])
+  farmer Farmer? @relation(fields: [farmerId], references: [id])
+
+  @@map("bid_confirmations")
+}
+
+// ─── IoT Verifications ────────────────────────────────────────────────────────
+
+model IotVerification {
+  verificationId     String   @id
+  produceId          String?
+  temperature        Decimal? @db.Decimal(6, 2)
+  humidity           Decimal? @db.Decimal(6, 2)
+  moisture           Decimal? @db.Decimal(6, 2)
+  weight             Decimal? @db.Decimal(10, 2)
+  riskLevel          String?
+  verificationStatus String?
+  issues             String?
+  verificationHash   String?
+  verifiedAt         DateTime @default(now())
+
+  produce FarmerProduce? @relation(fields: [produceId], references: [id])
+
+  @@map("iot_verifications")
+}
+
+// ─── Communications ───────────────────────────────────────────────────────────
+
+model Communication {
+  id              String   @id @default(uuid())
+  senderUserId    String?
+  recipientUserId String?
+  messageType     String?
+  subject         String?
+  messageContent  String?
+  bidId           String?
+  regionalBidId   String?
+  sentTimestamp   DateTime @default(now())
+  readStatus      Boolean  @default(false)
+
+  sender      User?        @relation("sender", fields: [senderUserId], references: [id])
+  recipient   User?        @relation("recipient", fields: [recipientUserId], references: [id])
+  bid         Bid?         @relation(fields: [bidId], references: [id])
+  regionalBid RegionalBid? @relation(fields: [regionalBidId], references: [id])
+
+  @@map("communications")
+}
+
+// ─── Audit Events ─────────────────────────────────────────────────────────────
+// Merge note: SQL uses `inet` for ip; Prisma maps it to String.
+
+model AuditEvent {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  ip        String?
+  userAgent String?
+  path      String?
+  status    Int?
+  createdAt DateTime @default(now())
+
+  @@map("audit_events")
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ─── Transactions & Ledger ────────────────────────────────────────────────────
+
+model Transaction {
+  id          String            @id @default(uuid())
+  farmerId    String
+  buyerId     String
+  produceId   String
+  weightKg    Decimal           @db.Decimal(10, 2)
+  pricePerKg  Decimal           @db.Decimal(10, 2)
+  totalAmount Decimal           @db.Decimal(14, 2)
+  status      TransactionStatus @default(PENDING)
+  onChainHash String?
+  blockNumber String?
+  createdAt   DateTime          @default(now())
+  confirmedAt DateTime?
+
+  farmer        User          @relation("farmer", fields: [farmerId], references: [id])
+  buyer         User          @relation("buyer", fields: [buyerId], references: [id])
+  produce       Produce       @relation(fields: [produceId], references: [id])
   ledgerEntries LedgerEntry[]
 
   @@index([farmerId])
@@ -118,15 +398,15 @@ model Transaction {
 }
 
 model LedgerEntry {
-  id              String      @id @default(uuid())
+  id              String   @id @default(uuid())
   transactionId   String
   dataHash        String
   onChainHash     String
   blockNumber     String
   contractAddress String
-  anchoredAt      DateTime    @default(now())
+  anchoredAt      DateTime @default(now())
 
-  transaction     Transaction @relation(fields: [transactionId], references: [id])
+  transaction Transaction @relation(fields: [transactionId], references: [id])
 
   @@index([transactionId])
   @@index([onChainHash])

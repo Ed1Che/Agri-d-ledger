@@ -77,6 +77,8 @@
 @theme inline {
   --font-sans: 'Geist', 'Geist Fallback';
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+
+  /* Semantic color tokens mapped from CSS variables */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -101,10 +103,6 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -113,6 +111,56 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Border radius scale */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Agri-D-Ledger brand palette */
+  --color-agri-green-50: oklch(0.98 0.02 140);
+  --color-agri-green-100: oklch(0.95 0.05 140);
+  --color-agri-green-200: oklch(0.9 0.09 140);
+  --color-agri-green-300: oklch(0.82 0.13 140);
+  --color-agri-green-400: oklch(0.72 0.17 140);
+  --color-agri-green-500: oklch(0.62 0.19 140);
+  --color-agri-green-600: oklch(0.52 0.17 140);
+  --color-agri-green-700: oklch(0.44 0.15 140);
+  --color-agri-green-800: oklch(0.36 0.12 140);
+  --color-agri-green-900: oklch(0.28 0.09 140);
+
+  --color-agri-earth-50: oklch(0.98 0.015 70);
+  --color-agri-earth-100: oklch(0.95 0.04 70);
+  --color-agri-earth-200: oklch(0.88 0.08 70);
+  --color-agri-earth-300: oklch(0.79 0.12 70);
+  --color-agri-earth-400: oklch(0.70 0.15 70);
+  --color-agri-earth-500: oklch(0.61 0.16 70);
+  --color-agri-earth-600: oklch(0.52 0.14 70);
+  --color-agri-earth-700: oklch(0.43 0.11 70);
+  --color-agri-earth-800: oklch(0.35 0.09 70);
+  --color-agri-earth-900: oklch(0.26 0.06 70);
+
+  /* Animation utilities */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.3s ease-out;
+}
+
+/* Keyframe definitions */
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @layer base {

@@ -1,10 +1,13 @@
 // src/routes/transactions.ts
 import { Router } from 'express';
 import { z } from 'zod';
-import { randomUUID, createHash } from 'crypto';
+import { randomUUID } from 'crypto';
+import { TransactionStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { logger } from '../utils/logger';
+
+const VALID_STATUSES = new Set(Object.values(TransactionStatus));
 
 export const transactionsRouter = Router();
 
@@ -51,7 +54,12 @@ transactionsRouter.get('/', requireAuth, async (req, res, next) => {
     const { status, page = '1', pageSize = '20' } = req.query as Record<string, string>;
     const skip = (parseInt(page) - 1) * parseInt(pageSize);
     const where: Record<string, unknown> = {};
-    if (status) where.status = status;
+    if (status) {
+      if (!VALID_STATUSES.has(status as TransactionStatus)) {
+        return res.status(400).json({ error: 'validation_error', message: `Invalid status. Must be one of: ${[...VALID_STATUSES].join(', ')}` });
+      }
+      where.status = status;
+    }
     if (req.user!.role === 'FARMER') where.farmerId = req.user!.sub;
     if (req.user!.role === 'BUYER') where.buyerId = req.user!.sub;
 
