@@ -1,30 +1,57 @@
 import { ethers } from "hardhat";
+import * as fs from "fs";
 
 async function main() {
-  console.log("Deploying contracts...");
+  console.log("Deploying Agri-D-Ledger contracts...\n");
 
-  // Deploy IdentityRegistry
-  const IdentityRegistry = await ethers.getContractFactory("IdentityRegistry");
-  const registry = await IdentityRegistry.deploy();
-  await registry.waitForDeployment();
-  console.log("IdentityRegistry deployed to:", await registry.getAddress());
+  // 1. IdentityRegistry
+  const Registry = await ethers.getContractFactory("IdentityRegistry");
+  const identityRegistry = await Registry.deploy();
+  await identityRegistry.waitForDeployment();
+  const registryAddr = await identityRegistry.getAddress();
+  console.log("IdentityRegistry deployed to:", registryAddr);
 
-  // Deploy Counter
-  const Counter = await ethers.getContractFactory("Counter");
-  const counter = await Counter.deploy();
-  await counter.waitForDeployment();
-  console.log("Counter deployed to:", await counter.getAddress());
-  
-   // 2. Deploy ProductRegistry — pass IdentityRegistry address
+  // 2. ProductRegistry
   const Product = await ethers.getContractFactory("ProductRegistry");
-  const productRegistry = await Product.deploy(registryAddress);
+  const productRegistry = await Product.deploy(registryAddr);
   await productRegistry.waitForDeployment();
-  console.log("ProductRegistry deployed to:", await productRegistry.getAddress());
+  const productAddr = await productRegistry.getAddress();
+  console.log("ProductRegistry deployed to:  ", productAddr);
+
+  // 3. ChainOfCustody
+  const Custody = await ethers.getContractFactory("ChainOfCustody");
+  const chainOfCustody = await Custody.deploy(registryAddr, productAddr);
+  await chainOfCustody.waitForDeployment();
+  const custodyAddr = await chainOfCustody.getAddress();
+  console.log("ChainOfCustody deployed to:   ", custodyAddr);
+
+  // 4. QualityVerification
+  const Quality = await ethers.getContractFactory("QualityVerification");
+  const qualityVerification = await Quality.deploy(registryAddr, productAddr);
+  await qualityVerification.waitForDeployment();
+  const qualityAddr = await qualityVerification.getAddress();
+  console.log("QualityVerification deployed to:", qualityAddr);
+
+  // 5. PaymentEscrow
+  const Escrow = await ethers.getContractFactory("PaymentEscrow");
+  const paymentEscrow = await Escrow.deploy(registryAddr, custodyAddr, qualityAddr);
+  await paymentEscrow.waitForDeployment();
+  const escrowAddr = await paymentEscrow.getAddress();
+  console.log("PaymentEscrow deployed to:    ", escrowAddr);
+
+  // Save addresses to file for frontend use later
+  const addresses = {
+    network: "amoy",
+    identityRegistry: registryAddr,
+    productRegistry: productAddr,
+    chainOfCustody: custodyAddr,
+    qualityVerification: qualityAddr,
+    paymentEscrow: escrowAddr,
+    deployedAt: new Date().toISOString()
+  };
+
+  fs.writeFileSync("deployed-addresses.json", JSON.stringify(addresses, null, 2));
+  console.log("\nAddresses saved to deployed-addresses.json");
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+main().catch(console.error);
