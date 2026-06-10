@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import FarmerDashboard from "./pages/FarmerDashboard";
 import CooperativeDashboard from "./pages/CooperativeDashboard";
+import BuyerDashboard from "./pages/BuyerDashboard";
 import ProductTrace from "./pages/ProductTrace";
 import "./App.css";
 

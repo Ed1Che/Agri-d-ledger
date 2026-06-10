@@ -1,8 +1,7 @@
+import * as dotenv from "dotenv";
+dotenv.config();
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
-import * as dotenv from "dotenv";
-
-dotenv.config();
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -21,20 +20,16 @@ const config: HardhatUserConfig = {
     artifacts: "./artifacts",
   },
   networks: {
+    localhost: {
+      url: "http://127.0.0.1:8545",
+    },
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL || "",
-      accounts: process.env.SEPOLIA_PRIVATE_KEY ?
-        [process.env.SEPOLIA_PRIVATE_KEY] : [],
-    },
-    polygon: {
-      url: process.env.POLYGON_RPC_URL || "",
-      accounts: process.env.POLYGON_PRIVATE_KEY ?
-        [process.env.POLYGON_PRIVATE_KEY] : [],
+      accounts: process.env.SEPOLIA_PRIVATE_KEY ? [process.env.SEPOLIA_PRIVATE_KEY] : [],
     },
     amoy: {
       url: process.env.AMOY_RPC_URL || "",
-      accounts: process.env.AMOY_PRIVATE_KEY ?
-        [process.env.AMOY_PRIVATE_KEY] : [],
+      accounts: process.env.AMOY_PRIVATE_KEY ? [process.env.AMOY_PRIVATE_KEY] : [],
     },
   },
 };

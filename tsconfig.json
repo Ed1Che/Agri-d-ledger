@@ -10,6 +10,5 @@
     "rootDir": ".",
     "outDir": "dist"
   },
-  "include": ["./scripts", "./test", "./hardhat.config.ts"],
-  "files": ["./hardhat.config.ts"]
+  "include": ["./scripts", "./test", "./hardhat.config.ts"]
 }
